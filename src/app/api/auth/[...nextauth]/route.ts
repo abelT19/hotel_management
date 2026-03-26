@@ -16,37 +16,42 @@ export const authOptions = {
           throw new Error("Missing credentials");
         }
 
-        const [users]: any = await pool.execute(
-          "SELECT id, email, password, name, phone, role, status FROM User WHERE email = ? AND status = 'ACTIVE'",
-          [credentials.email]
-        );
+        try {
+          const [users]: any = await pool.execute(
+            "SELECT id, email, password, name, phone, role, status FROM User WHERE email = ? AND status = 'ACTIVE'",
+            [credentials.email]
+          );
 
+          if (users.length === 0) {
+            console.error(`[AUTH] User not found or not active: ${credentials.email}`);
+            throw new Error("No user found with this email");
+          }
 
-        if (users.length === 0) {
-          throw new Error("No user found with this email");
+          const user = users[0];
+
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+
+          if (!isPasswordValid) {
+            console.error(`[AUTH] Invalid password for: ${credentials.email}`);
+            throw new Error("Invalid password");
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            phone: user.phone,
+            role: user.role,
+            status: user.status
+          };
+        } catch (error: any) {
+          console.error("[AUTH] Database Error during authorization:", error.message || error);
+          // Re-throw for handled errors, but generic for DB issues
+          if (error.message.includes("database") || error.code) {
+             throw new Error("Database connection error. Please try again later.");
+          }
+          throw error;
         }
-
-        const user = users[0];
-
-        if (user.status === "REVOKED") {
-          throw new Error("Access Denied: Your account has been revoked.");
-        }
-
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid password");
-        }
-
-        // Return user with role and status for the JWT callback
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          phone: user.phone,
-          role: user.role,
-          status: user.status
-        };
       }
     })
   ],
@@ -54,7 +59,7 @@ export const authOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as any).id;
-        token.sub = (user as any).id; // Map id to sub for standard access
+        token.sub = (user as any).id;
         token.role = (user as any).role;
         token.phone = (user as any).phone;
         token.status = (user as any).status;
@@ -63,7 +68,7 @@ export const authOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id || token.sub; // Try both
+        (session.user as any).id = token.id || token.sub;
         (session.user as any).role = token.role;
         (session.user as any).phone = token.phone;
         (session.user as any).status = token.status;
@@ -72,19 +77,13 @@ export const authOptions = {
     },
     async redirect({ url, baseUrl, token }) {
       const role = (token as any)?.role || "GUEST";
-
-      // If the user just signed in, send to their specific dashboard
       if (url === baseUrl || url.startsWith(baseUrl + "/login")) {
-        if (role === "CUSTOMER") {
-          return `${baseUrl}/dashboard/guest`;
-        } else if (role === "ADMIN" || role === "RECEPTIONIST") {
-          return `${baseUrl}/dashboard/staff`;
-        }
+        if (role === "CUSTOMER") return `${baseUrl}/dashboard/guest`;
+        if (role === "ADMIN" || role === "RECEPTIONIST") return `${baseUrl}/dashboard/staff`;
         return `${baseUrl}/dashboard`;
       }
       return url;
     }
-
   },
   pages: {
     signIn: "/login",
@@ -93,10 +92,8 @@ export const authOptions = {
   session: {
     strategy: "jwt"
   },
-  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions as any);
-
 export { handler as GET, handler as POST };

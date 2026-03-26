@@ -9,7 +9,7 @@ function createPool(): mysql.Pool {
   const connectionUri = process.env.DATABASE_URL;
 
   if (connectionUri) {
-    // Clean Prisma-specific SSL params from the URL that mysql2 rejects
+    // Clean Prisma-specific SSL params that mysql2 doesn't recognize
     let cleanedUri = connectionUri;
     try {
       const url = new URL(connectionUri);
@@ -17,21 +17,22 @@ function createPool(): mysql.Pool {
       url.searchParams.delete("sslaccept");
       cleanedUri = url.toString();
     } catch (e) {
-      // ignore parse errors
+      console.warn("[DB] URI parsing error:", e);
     }
 
     return mysql.createPool({
       uri: cleanedUri,
       ssl: {
-        // Required for Aiven
         rejectUnauthorized: false
       },
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0
-    });
+      queueLimit: 0,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0
+    } as any);
   } else {
-    // Fallback for local development if DATABASE_URL is not set
+    // Fallback for local development
     return mysql.createPool({
       host: process.env.DB_HOST || "127.0.0.1",
       user: process.env.DB_USER || "root",
