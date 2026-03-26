@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, ChefHat, MapPin, CheckCircle2, Lock, Home, Car, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
-export default function OrderFormPage() {
+function OrderFormContent() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -233,6 +233,15 @@ export default function OrderFormPage() {
         </div>
     );
 }
+
+export default function OrderFormPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen pt-28 pb-20 px-6 text-center text-slate-500">Loading order form...</div>}>
+            <OrderFormContent />
+        </Suspense>
+    );
+}
+
 
 function FileUploadZone({ file, onChange, label, hint, accent }: {
     file: File | null;

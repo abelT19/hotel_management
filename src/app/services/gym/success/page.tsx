@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CheckCircle2, Waves, ArrowRight, UserCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function MembershipSuccessPage() {
+function MembershipSuccessContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const membershipId = searchParams.get("id");
@@ -61,3 +62,12 @@ export default function MembershipSuccessPage() {
         </div>
     );
 }
+
+export default function MembershipSuccessPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-slate-500">Loading your membership status...</div>}>
+            <MembershipSuccessContent />
+        </Suspense>
+    );
+}
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { UserPlus, Mail, Lock, Phone, User, CheckCircle2, Camera } from "lucide-react";
 import Link from "next/link";
 
-export default function SignupPage() {
+function SignupContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get("callbackUrl") || "/order-food";
@@ -198,3 +198,12 @@ export default function SignupPage() {
         </div>
     );
 }
+
+export default function SignupPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 text-slate-500">Loading signup...</div>}>
+            <SignupContent />
+        </Suspense>
+    );
+}
+
